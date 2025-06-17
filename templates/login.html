@@ -1,0 +1,112 @@
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Useless Login</title>
+        <style>
+            body {
+                margin: 40px auto;
+                max-width: 650px;
+                line-height: 1.6;
+                font-size: 18px;
+                color: #444;
+                padding: 0 10px;
+            }
+            h1,
+            h2,
+            h3 {
+                line-height: 1.2;
+            }
+
+            select {
+                width: 100%;
+                margin-top: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Login to T3 Chat Clone Generator</h1>
+        <p>Choose your first name, last name, and a secure password!</p>
+        <form action="/login" method="post">
+            <select name="first" id="first-name-dropdown">
+                <option value="">Loading first names...</option>
+            </select>
+            <small
+                >Tip: You can start typing your first name and your browser
+                should automatically select your first name!</small
+            >
+            <select name="last" id="last-name-dropdown">
+                <option value="">Loading last names...</option>
+            </select>
+            <small>
+                Note: If you don't see your name,
+                <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    >click here</a
+                >
+                to add it!
+            </small>
+            <select name="password" id="password-dropdown">
+                <option value="">Loading passwords...</option>
+            </select>
+            <small>
+                These passwords have been handpicked for being incredibly
+                secure!
+            </small>
+            <br />
+            <br />
+            <input type="submit" value="Login" />
+        </form>
+
+        <script>
+            // Function to populate dropdown with data from API
+            async function populateDropdown(url, selectId, placeholder) {
+                try {
+                    const response = await fetch(url);
+                    const names = await response.json();
+                    const select = document.getElementById(selectId);
+
+                    // Clear loading message
+                    select.innerHTML = "";
+
+                    // Add placeholder option
+                    const placeholderOption = document.createElement("option");
+                    placeholderOption.value = "";
+                    placeholderOption.textContent = placeholder;
+                    select.appendChild(placeholderOption);
+
+                    // Add name options
+                    names.forEach((name) => {
+                        const option = document.createElement("option");
+                        option.value = name;
+                        option.textContent = name;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error(`Error loading ${selectId}:`, error);
+                    const select = document.getElementById(selectId);
+                    select.innerHTML =
+                        '<option value="">Error loading names</option>';
+                }
+            }
+
+            // Load data when page loads
+            document.addEventListener("DOMContentLoaded", function () {
+                populateDropdown(
+                    "/static/first_names.json",
+                    "first-name-dropdown",
+                    "Select first name"
+                );
+                populateDropdown(
+                    "/static/last_names.json",
+                    "last-name-dropdown",
+                    "Select last name"
+                );
+                populateDropdown(
+                    "/static/passwords.json",
+                    "password-dropdown",
+                    "Select password"
+                );
+            });
+        </script>
+    </body>
+</html>

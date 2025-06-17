@@ -37,12 +37,49 @@
                 outline: none;
                 box-shadow: none;
             }
+
+            evensmaller {
+                font-size: 4px;
+            }
         </style>
     </head>
     <body>
         <div class="chat" style="display: none">
             <iframe src="" id="chat-frame"></iframe>
         </div>
+        {% if not user %}
+        <div>
+            <p>
+                <a href="/login"><button>LOGIN</button></a>
+            </p>
+            <small
+                >Note: There is absolutely no reason to login. But if you want
+                to...</small
+            >
+        </div>
+        {% endif %} {% if user %}
+        <div>
+            <p>Greetings, {{first}}</p>
+            <h2>Hop back into your T3 Chat clones!</h2>
+            <ul>
+                {% for clone in clones %}
+                <li>
+                    <a href="/?cur={{clone.id}}"
+                        >Click here to access clone id {{clone.id}}!</a
+                    >
+                </li>
+                {% endfor %}
+            </ul>
+            {% if clones|length == 0 %}
+            <p>
+                You haven't generated any T3 Chat clones yet! Click the button
+                below to start generating!
+            </p>
+            {% endif %}
+            <small>To logout, clear all browser data.</small><br />
+            <evensmaller>or click <a href="/logout">here</a></evensmaller>
+        </div>
+        {% endif %}
         <h1>Generate T3 Chat Ripoff</h1>
         <p>Adam Xu • June 17, 2025 • 5 minute read</p>
         <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">

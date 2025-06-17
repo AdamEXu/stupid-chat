@@ -1,4 +1,13 @@
-from flask import Flask, request, jsonify, Response, render_template, render_template
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    Response,
+    render_template,
+    render_template,
+    make_response,
+    redirect,
+)
 import dotenv
 import os
 import requests
@@ -16,7 +25,7 @@ app = Flask(__name__)
 # Database setup
 def init_db():
     """Initialize the SQLite database with the chat_apps table"""
-    conn = sqlite3.connect("chat_apps.db")
+    conn = sqlite3.connect("main.db")
     cursor = conn.cursor()
 
     cursor.execute(
@@ -27,7 +36,8 @@ def init_db():
             html_content TEXT NOT NULL,
             prompt_used TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            content_hash TEXT UNIQUE NOT NULL
+            content_hash TEXT UNIQUE NOT NULL,
+            user TEXT
         )
     """
     )
@@ -36,21 +46,21 @@ def init_db():
     conn.close()
 
 
-def save_chat_app(title, html_content, prompt_used):
+def save_chat_app(title, html_content, prompt_used, user=None):
     """Save a generated chat app to the database"""
     # Create a hash of the content to avoid duplicates
     content_hash = hashlib.md5(html_content.encode()).hexdigest()
 
-    conn = sqlite3.connect("chat_apps.db")
+    conn = sqlite3.connect("main.db")
     cursor = conn.cursor()
 
     try:
         cursor.execute(
             """
-            INSERT INTO chat_apps (title, html_content, prompt_used, content_hash)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO chat_apps (title, html_content, prompt_used, content_hash, user)
+            VALUES (?, ?, ?, ?, ?)
         """,
-            (title, html_content, prompt_used, content_hash),
+            (title, html_content, prompt_used, content_hash, user),
         )
 
         app_id = cursor.lastrowid
@@ -69,7 +79,7 @@ def save_chat_app(title, html_content, prompt_used):
 
 def get_all_chat_apps():
     """Get all saved chat apps with basic info"""
-    conn = sqlite3.connect("chat_apps.db")
+    conn = sqlite3.connect("main.db")
     cursor = conn.cursor()
 
     cursor.execute(
@@ -95,9 +105,39 @@ def get_all_chat_apps():
     ]
 
 
+def get_chat_apps_by_user(user):
+    """Get all saved chat apps for a specific user"""
+    conn = sqlite3.connect("main.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, title, created_at,
+               SUBSTR(html_content, 1, 200) as preview
+        FROM chat_apps
+        WHERE user = ?
+        ORDER BY created_at DESC
+    """,
+        (user,),
+    )
+
+    apps = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": app[0],
+            "title": app[1],
+            "created_at": app[2],
+            "preview": app[3] + "..." if len(app[3]) >= 200 else app[3],
+        }
+        for app in apps
+    ]
+
+
 def get_chat_app_by_id(app_id):
     """Get a specific chat app by ID"""
-    conn = sqlite3.connect("chat_apps.db")
+    conn = sqlite3.connect("main.db")
     cursor = conn.cursor()
 
     cursor.execute(
@@ -147,7 +187,24 @@ def clean_html_from_markdown(content):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    user = request.cookies.get("user")
+    first = user.split("|")[0] if user else None
+    last = user.split("|")[1] if user else None
+    password = user.split("|")[2] if user else None
+
+    # Get user-specific chat apps if user is logged in
+    clones = []
+    if user:
+        clones = get_chat_apps_by_user(user)
+
+    return render_template(
+        "index.html",
+        user=user,
+        first=first,
+        last=last,
+        password=password,
+        clones=clones,
+    )
 
 
 @app.route("/generate-chat-app", methods=["GET"])
@@ -258,8 +315,11 @@ Use this example as inspiration for structure, styling, and functionality, but c
                 except:
                     title = f"Chat App {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
+                # Get user from cookies
+                user = request.cookies.get("user")
+
                 # Save to database
-                app_id = save_chat_app(title, html_content, full_prompt)
+                app_id = save_chat_app(title, html_content, full_prompt, user)
 
                 # Return simple response
                 return jsonify({"html": html_content, "id": app_id})
@@ -288,6 +348,28 @@ Use this example as inspiration for structure, styling, and functionality, but c
         return jsonify({"error": f"Request to OpenAI failed: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html")
+    if request.method == "POST":
+        # just store it in a cookie
+        first = request.form.get("first")
+        last = request.form.get("last")
+        password = request.form.get("password")
+        cookie = f"{first}|{last}|{password}"
+        response = make_response(redirect("/"))
+        response.set_cookie("user", cookie)
+        return response
+
+
+@app.route("/logout")
+def logout():
+    response = make_response(redirect("/"))
+    response.set_cookie("user", "")
+    return response
 
 
 if __name__ == "__main__":
