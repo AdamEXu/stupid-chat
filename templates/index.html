@@ -130,26 +130,30 @@
         <h2>FAQ</h2>
         <p><b>Who's paying for inference?</b></p>
         <p>
-            You'll need to use your own OpenRouter API key once a chat interface
-            has been generated. The OpenRouter API key will be used directly on
-            your client to call the OpenRouter API, as every good chat app will
-            obviously do.
+            You! You'll need to use your own OpenRouter API key once a chat
+            interface has been generated. The OpenRouter API key will be used
+            directly on your client to call the OpenRouter API, as every good
+            chat app will obviously do. However, I'm the one paying for
+            inference when you're generating chat apps...
         </p>
         <p><b>Is this better than T3 Chat?</b></p>
         <p>
             Yes. T3 Chat has fancy useless features like a good user experience,
             image generation, file uploads, conversation history, and other
-            frivelous features that you don't need.
+            frivelous features that you don't need. This chat app generates chat
+            apps. There's even a text box where you can specify what features or
+            theme you want!
         </p>
         <p><b>Why?</b></p>
         <p>Yes.</p>
-        <p><b>Can I view existing websites?</b></p>
+        <p><b>How to view previous websites I've generated?</b></p>
         <p>
-            I didn't build a UI for it, but you can append ?cur=id at the end,
-            where id is a number starting from 1. For example, go to
-            <a href="/?cur=1">/?cur=1</a> to see the first app generated using
-            this thing.
+            Create an account by clicking the useless login button at the top of
+            the page! Despite the caption, it does actually save threads under
+            your account.
         </p>
+        <p><b>Why do I have to enter my OpenRouter API key each time?</b></p>
+        <p>Was too lazy to implement global saving lmao</p>
         <h2>Notes</h2>
         <p>
             Yes, this is satire. No one should genuinely use this. Unless you're
@@ -187,59 +191,118 @@
         });
 
         function generateChatApp() {
-            document.getElementById("skibidi").innerText =
-                "Heard of a thing called patience? Yeah its loading btw, since ai is generating an entire webpage itll take about a minute or so...";
-            document.getElementById("skibidi").disabled = true;
+            // Change button text to indicate loading with character counter
+            const button = document.getElementById("skibidi");
+            button.innerHTML =
+                "Starting generation... (0 characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw";
+            button.disabled = true;
 
             // Get theme value from input
             const themeInput = document.getElementById("theme-input");
             const theme = themeInput ? themeInput.value.trim() : "";
 
             // Build URL with theme parameter if provided
-            let url = "/generate-chat-app";
+            let url = "/generate-chat-app-stream";
             if (theme) {
                 url += `?theme=${encodeURIComponent(theme)}`;
             }
 
-            // Call /generate-chat-app to get a new chat app
-            fetch(url)
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.error) {
-                        alert(`Error: ${data.error}`);
-                        return;
+            // Use EventSource for streaming
+            const eventSource = new EventSource(url);
+            let charCount = 0;
+
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    switch (data.type) {
+                        case "start":
+                            button.innerText = `${data.message} (${data.char_count} characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw`;
+                            break;
+
+                        case "progress":
+                            charCount = data.char_count;
+                            button.innerText = `Generating your chat app... (${charCount} characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw`;
+                            break;
+
+                        case "complete":
+                            eventSource.close();
+
+                            if (data.html && data.id) {
+                                showChatApp(data.html);
+                                // Update URL to include the new ID
+                                window.history.pushState(
+                                    {},
+                                    "",
+                                    `/?cur=${data.id}`
+                                );
+                            }
+
+                            // Reset button after a short delay
+                            setTimeout(() => {
+                                button.innerHTML =
+                                    'Generate your very own chat app with a simple click of a button! Just click on this button, and you\'ll experience a chat experience where you can talk to an AI. Why am I putting so much text into this button? To piss Theo off obviously. <img src="https://sc.mogicons.com/l/troll-face-22.png" height="20" />';
+                                button.disabled = false;
+                            }, 2000);
+                            break;
+
+                        case "error":
+                            eventSource.close();
+                            button.innerHTML =
+                                "womp womp generation failed click me again!";
+                            button.disabled = false;
+                            alert(`Error: ${data.message}`);
+                            break;
                     }
-                    if (data.html && data.id) {
-                        showChatApp(data.html);
-                        // Update URL to include the new ID
-                        window.history.pushState({}, "", `/?cur=${data.id}`);
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error generating chat app:", error);
-                    alert(
-                        "the chat app exploded and didn't work, please refresh and try again. this is most likely because the server i was hosting it on exploded or i ran out of money to pay openai bills"
-                    );
-                });
+                } catch (e) {
+                    console.error("Error parsing streaming data:", e);
+                }
+            };
+
+            eventSource.onerror = function (event) {
+                console.error("EventSource error:", event);
+                eventSource.close();
+                button.innerHTML = "Generation failed - click to try again";
+                button.disabled = false;
+                alert(
+                    "the chat app exploded and didn't work, please refresh and try again. this is most likely because the server i was hosting it on exploded or i ran out of money to pay openai bills"
+                );
+            };
         }
 
         function loadChatApp(id) {
-            // Call /generate-chat-app?cur=x to get existing chat app
-            fetch(`/generate-chat-app?cur=${id}`)
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.error) {
-                        alert(`Error loading app ${id}: ${data.error}`);
-                        return;
+            // Use streaming endpoint for consistency, but existing apps load immediately
+            const eventSource = new EventSource(
+                `/generate-chat-app-stream?cur=${id}`
+            );
+
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    switch (data.type) {
+                        case "complete":
+                            eventSource.close();
+                            if (data.html && data.id) {
+                                showChatApp(data.html);
+                            }
+                            break;
+
+                        case "error":
+                            eventSource.close();
+                            alert(`Error loading app ${id}: ${data.message}`);
+                            break;
                     }
-                    if (data.html && data.id) {
-                        showChatApp(data.html);
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error loading chat app:", error);
-                    alert(`Failed to load chat app ${id}. Please try again.`);
-                });
+                } catch (e) {
+                    console.error("Error parsing streaming data:", e);
+                }
+            };
+
+            eventSource.onerror = function (event) {
+                console.error("EventSource error:", event);
+                eventSource.close();
+                alert(`Failed to load chat app ${id}. Please try again.`);
+            };
         }
 
         function showChatApp(html) {

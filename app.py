@@ -2,20 +2,21 @@ from flask import (
     Flask,
     request,
     jsonify,
-    Response,
-    render_template,
     render_template,
     make_response,
     redirect,
+    Response,
 )
 import dotenv
 import os
-import requests
-import json
 import sqlite3
 import hashlib
 import re
+import json
 from datetime import datetime
+from openai import OpenAI
+
+client = OpenAI()
 
 dotenv.load_dotenv()
 
@@ -226,11 +227,6 @@ def generate_chat_app():
 
     # Generate new chat app
     try:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        # print(f"API Key present: {bool(api_key)}")
-        if not api_key:
-            return jsonify({"error": "OpenAI API key not configured"}), 500
-
         # Read the prompt from static/prompt.txt
         try:
             with open("static/prompt.txt", "r", encoding="utf-8") as f:
@@ -252,53 +248,196 @@ def generate_chat_app():
         # Get theme parameter if provided
         theme = request.args.get("theme", "").strip()
 
-        # Combine prompt with example context
-        full_prompt = f"""{prompt_content}
+        # Combine prompt with example as reference material
+        system_prompt = f"""{prompt_content}
 
-Here's an example of a well-structured chat application for reference:
+REFERENCE EXAMPLE (for technical patterns only - DO NOT copy the design):
+The following is a working example that shows the correct technical implementation patterns. Use this as a reference for API calls, streaming, and JavaScript structure, but create your own unique visual design:
 
-```html
 {example_html}
-```
 
-Use this example as inspiration for structure, styling, and functionality, but create a unique variation with different visual design, colors, layout, or features. Make sure your generated HTML is complete and self-contained."""
+END OF REFERENCE EXAMPLE - Create your own unique design while using the technical patterns shown above."""
 
-        # Append theme if provided
-        if theme:
-            full_prompt += (
-                f"\n\nAdditional theme/style requirement from the user: {theme}"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": f"Create a unique chat application with theme: {theme}",
+            },
+        ]
+
+        # Make the request to OpenAI API using the client
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=8000,
+                temperature=0.8,
+                timeout=120,
             )
 
-        # Set up headers for OpenAI API
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-
-        # Prepare the request payload (non-streaming)
-        payload = {
-            "model": "gpt-4o",
-            "messages": [{"role": "user", "content": full_prompt}],
-            "max_tokens": 4000,
-            "temperature": 0.7,
-        }
-
-        # Make the request to OpenAI API
-        openai_url = "https://api.openai.com/v1/chat/completions"
-        # print(f"Making request to OpenAI with payload: {payload}")
-        response = requests.post(openai_url, headers=headers, json=payload, timeout=120)
-        # print(f"OpenAI response status: {response.status_code}")
-        # print(f"OpenAI response: {response.text[:500]}")
-
-        if response.status_code == 200:
-            response_data = response.json()
-
             # Extract the generated HTML content
-            if "choices" in response_data and len(response_data["choices"]) > 0:
-                html_content = response_data["choices"][0]["message"]["content"]
+            html_content = completion.choices[0].message.content
+
+            # Clean up markdown code blocks if present
+            html_content = clean_html_from_markdown(html_content)
+
+            # Generate a title from the first few words of the HTML or use a default
+            title = "Generated Chat App"
+            try:
+                # Try to extract title from HTML title tag
+                title_match = re.search(
+                    r"<title>(.*?)</title>", html_content, re.IGNORECASE
+                )
+                if title_match:
+                    title = title_match.group(1).strip()
+                else:
+                    # Use timestamp as fallback
+                    title = f"Chat App {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            except:
+                title = f"Chat App {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+            # Get user from cookies
+            user = request.cookies.get("user")
+
+            # Save to database
+            app_id = save_chat_app(title, html_content, theme, user)
+
+            # Return simple response
+            return jsonify({"html": html_content, "id": app_id})
+
+        except Exception as openai_error:
+            # Handle OpenAI-specific errors
+            error_message = str(openai_error)
+            if hasattr(openai_error, "response"):
+                try:
+                    error_data = openai_error.response.json()
+                    error_message = error_data.get("error", {}).get(
+                        "message", error_message
+                    )
+                except:
+                    pass
+
+            return jsonify({"error": f"OpenAI API error: {error_message}"}), 500
+
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
+@app.route("/generate-chat-app-stream", methods=["GET"])
+def generate_chat_app_stream():
+    """Stream the chat app generation with character count feedback"""
+    print(f"generate_chat_app_stream called with args: {request.args}")
+
+    # Extract request parameters before entering generator context
+    cur = request.args.get("cur")
+    theme = request.args.get("theme", "").strip()
+    user = request.cookies.get("user")
+
+    # Check if user wants to retrieve existing app
+    if cur:
+        try:
+            app = get_chat_app_by_id(int(cur))
+            if app:
+                # For existing apps, just return the complete data immediately
+                def generate_existing():
+                    yield f"data: {json.dumps({'type': 'complete', 'html': app['html_content'], 'id': app['id'], 'char_count': len(app['html_content'])})}\n\n"
+
+                return Response(generate_existing(), mimetype="text/event-stream")
+            else:
+
+                def generate_error():
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Chat app not found'})}\n\n"
+
+                return Response(generate_error(), mimetype="text/event-stream")
+        except ValueError:
+
+            def generate_error():
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Invalid ID'})}\n\n"
+
+            return Response(generate_error(), mimetype="text/event-stream")
+        except Exception as e:
+
+            def generate_error():
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+            return Response(generate_error(), mimetype="text/event-stream")
+
+    # Generate new chat app with streaming
+    def generate_stream():
+        try:
+            # Read the prompt from static/prompt.txt
+            try:
+                with open("static/prompt.txt", "r", encoding="utf-8") as f:
+                    prompt_content = f.read().strip()
+            except FileNotFoundError:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Prompt file not found'})}\n\n"
+                return
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Error reading prompt file: {str(e)}'})}\n\n"
+                return
+
+            # Read the example HTML file as context
+            try:
+                with open("static/example.html", "r", encoding="utf-8") as f:
+                    example_html = f.read().strip()
+            except FileNotFoundError:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Example HTML file not found'})}\n\n"
+                return
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Error reading example HTML file: {str(e)}'})}\n\n"
+                return
+
+            # Use theme parameter extracted from request
+
+            # Combine prompt with example as reference material
+            system_prompt = f"""{prompt_content}
+
+REFERENCE EXAMPLE (for technical patterns only - DO NOT copy the design):
+The following is a working example that shows the correct technical implementation patterns. Use this as a reference for API calls, streaming, and JavaScript structure, but create your own unique visual design:
+
+{example_html}
+
+END OF REFERENCE EXAMPLE - Create your own unique design while using the technical patterns shown above."""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": f"Create a unique chat application with theme: {theme}",
+                },
+            ]
+
+            # Make the streaming request to OpenAI API
+            try:
+                stream = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    max_tokens=8000,
+                    temperature=0.8,
+                    timeout=120,
+                    stream=True,
+                )
+
+                html_content = ""
+                char_count = 0
+
+                # Send initial status
+                yield f"data: {json.dumps({'type': 'start', 'message': 'Starting generation...', 'char_count': 0})}\n\n"
+
+                # Process the streaming response
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        content = chunk.choices[0].delta.content
+                        html_content += content
+                        char_count = len(html_content)
+
+                        # Send character count update
+                        yield f"data: {json.dumps({'type': 'progress', 'char_count': char_count, 'content': content})}\n\n"
 
                 # Clean up markdown code blocks if present
                 html_content = clean_html_from_markdown(html_content)
+                final_char_count = len(html_content)
 
                 # Generate a title from the first few words of the HTML or use a default
                 title = "Generated Chat App"
@@ -315,39 +454,33 @@ Use this example as inspiration for structure, styling, and functionality, but c
                 except:
                     title = f"Chat App {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
-                # Get user from cookies
-                user = request.cookies.get("user")
+                # Use user extracted from request
+                # (user variable is already available from outer scope)
 
                 # Save to database
-                app_id = save_chat_app(title, html_content, full_prompt, user)
+                app_id = save_chat_app(title, html_content, theme, user)
 
-                # Return simple response
-                return jsonify({"html": html_content, "id": app_id})
-        else:
-            # Return the actual OpenAI error
-            try:
-                error_data = response.json()
-                error_msg = error_data.get("error", {}).get(
-                    "message", "Unknown OpenAI error"
-                )
-                return (
-                    jsonify({"error": f"OpenAI API error: {error_msg}"}),
-                    response.status_code,
-                )
-            except:
-                return (
-                    jsonify(
-                        {"error": f"OpenAI API error (status {response.status_code})"}
-                    ),
-                    response.status_code,
-                )
+                # Send completion
+                yield f"data: {json.dumps({'type': 'complete', 'html': html_content, 'id': app_id, 'char_count': final_char_count})}\n\n"
 
-        return jsonify({"error": "Failed to generate chat app"}), 500
+            except Exception as openai_error:
+                # Handle OpenAI-specific errors
+                error_message = str(openai_error)
+                if hasattr(openai_error, "response"):
+                    try:
+                        error_data = openai_error.response.json()
+                        error_message = error_data.get("error", {}).get(
+                            "message", error_message
+                        )
+                    except:
+                        pass
 
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Request to OpenAI failed: {str(e)}"}), 500
-    except Exception as e:
-        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+                yield f"data: {json.dumps({'type': 'error', 'message': f'OpenAI API error: {error_message}'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Unexpected error: {str(e)}'})}\n\n"
+
+    return Response(generate_stream(), mimetype="text/event-stream")
 
 
 @app.route("/login", methods=["GET", "POST"])
