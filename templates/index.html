@@ -1,0 +1,227 @@
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Generate T3 Chat Ripoff</title>
+        <style>
+            body {
+                margin: 40px auto;
+                max-width: 650px;
+                line-height: 1.6;
+                font-size: 18px;
+                color: #444;
+                padding: 0 10px;
+            }
+            h1,
+            h2,
+            h3 {
+                line-height: 1.2;
+            }
+
+            .chat {
+                position: absolute;
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                left: 0;
+                top: 0;
+            }
+
+            #chat-frame {
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                border: none;
+                outline: none;
+                box-shadow: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="chat" style="display: none">
+            <iframe src="" id="chat-frame"></iframe>
+        </div>
+        <h1>Generate T3 Chat Ripoff</h1>
+        <p>Adam Xu • June 17, 2025 • 5 minute read</p>
+        <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">
+            <img
+                src="https://i.ibb.co/tnB5mvq/Cleanshot-2025-06-17-at-10-54-41-2x.png"
+            />
+        </a>
+        <small>T3 Chat Day 1 vs Day 100 😱</small>
+        <p>With a single button click, you can generate a T3 chat ripoff!</p>
+        <p>
+            Tired of using a good chat app? Have AI generate an AI chat app for
+            you on the fly!
+        </p>
+        <p>
+            You'll have a <i>unique</i> AI chat experience with a subpar UX, but
+            who cares, because it's AI!
+        </p>
+        <p>
+            Once you've generated a chat experience, you'll be able to copy the
+            URL to save your favorite stupid chat user interfaces!
+        </p>
+        <button onclick="generateChatApp()" id="skibidi">
+            Generate your very own chat app with a simple click of a button!
+            Just click on this button, and you'll experience a chat experience
+            where you can talk to an AI. Why am I putting so much text into this
+            button? To piss Theo off obviously.
+            <img
+                src="https://sc.mogicons.com/l/troll-face-22.png"
+                height="20"
+            />
+        </button>
+        <small
+            >btw in case you couldn't figure it out the button above generates a
+            t3 chat ripoff</small
+        >
+        <p>
+            If you want to really make a personalized chat app (that still sucks
+            but it's <i>personal</i>) type a theme or something idrc and the ai
+            will generate something like that
+        </p>
+        <input
+            type="text"
+            id="theme-input"
+            placeholder="Type something in here"
+            value="T3 Chat Ripoff"
+            style="width: 100%"
+        />
+        <h2>FAQ</h2>
+        <p><b>Who's paying for inference?</b></p>
+        <p>
+            You'll need to use your own OpenRouter API key once a chat interface
+            has been generated. The OpenRouter API key will be used directly on
+            your client to call the OpenRouter API, as every good chat app will
+            obviously do.
+        </p>
+        <p><b>Is this better than T3 Chat?</b></p>
+        <p>
+            Yes. T3 Chat has fancy useless features like a good user experience,
+            image generation, file uploads, conversation history, and other
+            frivelous features that you don't need.
+        </p>
+        <p><b>Why?</b></p>
+        <p>Yes.</p>
+        <p><b>Can I view websites created by other people?</b></p>
+        <p>
+            Didn't build a UI for it, but you can append ?cur=id at the end,
+            where id is a number starting from 1. For example, go to
+            <a href="/?cur=1">/?cur=1</a> to see the first app generated using
+            this thing.
+        </p>
+        <h2>Notes</h2>
+        <p>
+            Yes, this is satire. No one should genuinely use this. Unless you're
+            a psycopath.
+        </p>
+        <p>
+            BTW pls don't spam the button I'm paying for the inference to
+            generate the actual chat ui and that does take quite a few tokens
+            and i dont want to go bankrupt this is modern art
+        </p>
+        <a href="https://github.com/adamexu/bad-chat"
+            >Open source on GitHub! Yes, this link is the default color. womp
+            womp theo (I would change it but i really want to piss you off)</a
+        >
+        <small
+            >btw the code is bad but i made this in like 1 hour so pls dont
+            judge too harsh :(</small
+        >
+        <p>
+            Styling inspired by
+            <a href="https://bettermotherfuckingwebsite.com/" target="_blank"
+                >bettermotherfuckingwebsite.com</a
+            >
+        </p>
+    </body>
+    <script>
+        // Check if there's a cur parameter in the URL on page load
+        window.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cur = urlParams.get("cur");
+
+            if (cur) {
+                loadChatApp(cur);
+            }
+        });
+
+        function generateChatApp() {
+            document.getElementById("skibidi").innerText =
+                "Heard of a thing called patience? Yeah its loading btw, since ai is generating an entire webpage itll take about a minute or so...";
+            document.getElementById("skibidi").disabled = true;
+
+            // Get theme value from input
+            const themeInput = document.getElementById("theme-input");
+            const theme = themeInput ? themeInput.value.trim() : "";
+
+            // Build URL with theme parameter if provided
+            let url = "/generate-chat-app";
+            if (theme) {
+                url += `?theme=${encodeURIComponent(theme)}`;
+            }
+
+            // Call /generate-chat-app to get a new chat app
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                        return;
+                    }
+                    if (data.html && data.id) {
+                        showChatApp(data.html);
+                        // Update URL to include the new ID
+                        window.history.pushState({}, "", `/?cur=${data.id}`);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error generating chat app:", error);
+                    alert(
+                        "the chat app exploded and didn't work, please refresh and try again. this is most likely because the server i was hosting it on exploded or i ran out of money to pay openai bills"
+                    );
+                });
+        }
+
+        function loadChatApp(id) {
+            // Call /generate-chat-app?cur=x to get existing chat app
+            fetch(`/generate-chat-app?cur=${id}`)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert(`Error loading app ${id}: ${data.error}`);
+                        return;
+                    }
+                    if (data.html && data.id) {
+                        showChatApp(data.html);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading chat app:", error);
+                    alert(`Failed to load chat app ${id}. Please try again.`);
+                });
+        }
+
+        function showChatApp(html) {
+            // Hide the homepage content
+            document.body.children[1].style.display = "none"; // Hide everything except the chat div
+            for (let i = 2; i < document.body.children.length; i++) {
+                document.body.children[i].style.display = "none";
+            }
+
+            // Show the chat iframe
+            const chatDiv = document.querySelector(".chat");
+            const iframe = document.getElementById("chat-frame");
+
+            // Create a blob URL for the HTML content
+            const blob = new Blob([html], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+
+            iframe.src = url;
+            chatDiv.style.display = "block";
+        }
+    </script>
+</html>

@@ -1,0 +1,50 @@
+You are an expert web developer specializing in creating beautiful, modern, and functional chat applications. Generate a single, self-contained HTML file (with inline CSS and JavaScript) that implements an AI chat interface called “T3 Chat Ripoff.” The HTML must be copy-and-paste ready, and must run immediately when opened in a browser—no external dependencies.
+
+Requirements:
+
+1. API Key Input  
+* At the top of the page display a labeled text input for the user’s OpenRouter API key and a “Save Key” button.  
+* Don’t persist the key in localStorage or cookies—store it in a JS variable.  
+* If the user tries to send a message without saving a key, show a clear inline error.
+
+2. Dynamic Model Selector  
+* On page load, fetch available models from OpenRouter’s list-models endpoint:  
+     `https://openrouter.ai/api/v1/models`  
+* Populate a dropdown with the model IDs returned.  
+* Default to meta-llama/llama-3.3-70b-instruct:free
+* If the fetch fails, show an error and disable the chat input.
+
+3. Chat View & UX  
+* A scrollable container showing messages in order, with distinct styles for user vs. assistant bubbles.  
+* Auto-scroll to the bottom on new messages.  
+* Good user experience: clear visual hierarchy, responsive layout (mobile + desktop), placeholder text, disabled states, and accessibility best practices (ARIA where appropriate).
+
+4. Message Input, Send Button, and Controls  
+* A textarea for typing user messages.  
+* A Send button that is disabled when the input is empty or while awaiting a response.  
+* Hitting Enter (without Shift) should send the message.  
+* Include a “Clear Conversation” button that resets the chat view and in-memory messages.
+
+5. Conversation State  
+* Keep an in-memory array of `{ role: 'user'|'assistant', content }` objects.  
+* On send: append user message, clear input, render it, then call OpenRouter with streaming.
+
+6. Streaming Support  
+* Use fetch with `response.body.getReader()` to read the stream of tokens from OpenRouter’s streaming API (`stream: true`).  
+* Render tokens live in the assistant bubble as they arrive.  
+* Once complete, finalize the message.
+
+7. API Integration  
+* Use `fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers: { Authorization: "Bearer "+apiKey, "Content-Type": "application/json" }, body: JSON.stringify({ model, messages, temperature:0.7, max_tokens:1024, stream:true }) })`.  
+* Gracefully handle HTTP or network errors: display an error message in the chat view and re-enable inputs.
+
+8. Responsive Design & Styling  
+* Use modern CSS (Flexbox or CSS Grid) for layout; ensure the UI adapts to different screen sizes.  
+* Keep CSS minimal and clean; use semantic HTML.  
+* Use smooth transitions or animations for UX polish (e.g., fading in new messages).
+
+9. Comments & Readability  
+* Comment key sections of HTML, CSS, and JS.  
+* Use clear, consistent naming conventions.
+
+Output only the full HTML file—no extra explanation or markdown. Paste the entire document so that it runs out of the box when saved as an `.html` file. Do not wrap it in a code block or text box or any other formatting or explanation.
