@@ -269,7 +269,7 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
         # Make the request to OpenAI API using the client
         try:
             completion = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=messages,
                 max_tokens=8000,
                 temperature=0.7,
@@ -416,7 +416,7 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
             # Make the streaming request to OpenAI API
             try:
                 stream = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1",
                     messages=messages,
                     max_tokens=8000,
                     temperature=0.7,
