@@ -269,10 +269,10 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
         # Make the request to OpenAI API using the client
         try:
             completion = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=8000,
-                temperature=0.8,
+                temperature=0.7,
                 timeout=120,
             )
 
@@ -281,6 +281,11 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
 
             # Clean up markdown code blocks if present
             html_content = clean_html_from_markdown(html_content)
+
+            # Remove any text after closing </html> tag
+            html_end = html_content.rfind("</html>")
+            if html_end != -1:
+                html_content = html_content[: html_end + 7]  # Keep </html> tag
 
             # Generate a title from the first few words of the HTML or use a default
             title = "Generated Chat App"
@@ -411,10 +416,10 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
             # Make the streaming request to OpenAI API
             try:
                 stream = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=messages,
                     max_tokens=8000,
-                    temperature=0.8,
+                    temperature=0.7,
                     timeout=120,
                     stream=True,
                 )
@@ -437,6 +442,12 @@ END OF REFERENCE EXAMPLE - Create your own unique design while using the technic
 
                 # Clean up markdown code blocks if present
                 html_content = clean_html_from_markdown(html_content)
+
+                # Remove any text after closing </html> tag
+                html_end = html_content.rfind("</html>")
+                if html_end != -1:
+                    html_content = html_content[: html_end + 7]  # Keep </html> tag
+
                 final_char_count = len(html_content)
 
                 # Generate a title from the first few words of the HTML or use a default

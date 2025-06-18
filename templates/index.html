@@ -194,7 +194,7 @@
             // Change button text to indicate loading with character counter
             const button = document.getElementById("skibidi");
             button.innerHTML =
-                "Starting generation... (0 characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw";
+                "Starting generation... (0 characters generated)... this will take about a minute, please be patient smh, its usually ~10,000ish characters btw, sometimes a bit more than that";
             button.disabled = true;
 
             // Get theme value from input
@@ -217,12 +217,12 @@
 
                     switch (data.type) {
                         case "start":
-                            button.innerText = `${data.message} (${data.char_count} characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw`;
+                            button.innerText = `${data.message} (${data.char_count} characters generated)... this will take about a minute, please be patient smh, its usually ~10,000ish characters btw, sometimes a bit more than that`;
                             break;
 
                         case "progress":
                             charCount = data.char_count;
-                            button.innerText = `Generating your chat app... (${charCount} characters generated)... this will take about a minute, please be patient smh, its typically about 40,000 characters btw`;
+                            button.innerText = `Generating your chat app... (${charCount} characters generated)... this will take about a minute, please be patient smh, its usually ~10,000ish characters btw, sometimes a bit more than that`;
                             break;
 
                         case "complete":
@@ -249,7 +249,7 @@
                         case "error":
                             eventSource.close();
                             button.innerHTML =
-                                "womp womp generation failed click me again!";
+                                "womp womp generation failed click me again";
                             button.disabled = false;
                             alert(`Error: ${data.message}`);
                             break;
@@ -290,7 +290,9 @@
 
                         case "error":
                             eventSource.close();
-                            alert(`Error loading app ${id}: ${data.message}`);
+                            alert(
+                                `clone number ${id} failed to load because ${data.message}`
+                            );
                             break;
                     }
                 } catch (e) {
